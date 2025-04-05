@@ -6,6 +6,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,10 +19,8 @@ public class LibroRepositorio {
 	private List<Libro> libros;
 	
 	public LibroRepositorio(){
-		
 		//crearFichero();
-		//leerFichero();
-		
+		//cargarLibros();
 	}
 	
 	private void crearFichero() {
@@ -92,16 +91,82 @@ public class LibroRepositorio {
 	}
 	
 	public void guardarLibros() throws FileNotFoundException, IOException {
-		boolean guardado = false;
 		ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("libros.dat"));
 		oos.writeObject(libros);
 		oos.close();
 	}
 	
-	public Libro agregarLibro(Libro l) throws FileNotFoundException, IOException {
+	public boolean agregarLibro(Libro l) throws FileNotFoundException, IOException {
 		libros = cargarLibros();
+		
+		if(libros.contains(l)) return false;
+		
 		libros.add(l);
 		guardarLibros();
-		return l;
+		return true;
 	}
+
+	public boolean prestarLibro(String isbn, String fechaPrestamo, boolean chckbxPrestado) {
+		
+		libros = cargarLibros();
+		
+		Libro libro = buscarLibro(isbn);
+		
+		if(libro == null) return false;
+		
+		LocalDate ahora = LocalDate.now();
+		
+		if(!libro.isPrestado() && chckbxPrestado) {
+			libro.setPrestado(true);
+			libro.setFechaPrestamo(ahora);
+			libro.setFechaDevolucion(ahora.plusDays(10));
+		}
+		else if(libro.isPrestado() && !chckbxPrestado){
+			libro.setPrestado(false);
+			libro.setFechaPrestamo(null);
+			libro.setFechaDevolucion(null);
+		}else if(libro.isPrestado() && chckbxPrestado){
+			libro.setFechaDevolucion(ahora.plusDays(3));
+			System.out.println("Fecha aumentada en 3 dias");
+		}
+		
+		try {
+			guardarLibros();
+		} catch (IOException e) {
+			System.out.println(e.getMessage());
+			return false;
+		}
+			
+		
+		
+		return true;
+		
+	}
+	public boolean borrarLibro(String isbn) {
+		libros = cargarLibros();
+		Libro libro = buscarLibro(isbn);
+		
+		if(libro == null) return false;
+		
+		try {
+			libros.remove(libro);
+			guardarLibros();
+			
+		}catch(Exception e){
+			System.out.println(e.getMessage());
+			return false;
+		}
+		
+		return true;
+	}
+	
+	public Libro buscarLibro(String isbn){
+		
+		return  libros.stream()
+				.filter(l -> l.getIsbn().equals(isbn))
+				.findFirst()
+				.orElse(null);
+	}
+
+
 }

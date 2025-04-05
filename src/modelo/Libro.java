@@ -15,6 +15,9 @@ public class Libro implements Serializable{
 	private String isbn, titulo, autor, editorial;
 	private LocalDate fechaPrestamo, fechaDevolucion;
 	private boolean prestado;
+	
+	public Libro(){}
+	
 	public Libro(String isbn, String titulo, String autor, String editorial) 
 		throws IsbnException, CamposVaciosException {
 		
@@ -45,6 +48,7 @@ public class Libro implements Serializable{
 		return isbn;
 	}
 	public void setIsbn(String isbn) throws CamposVaciosException, IsbnException {
+		if(isbn.length() == 0) throw new CamposVaciosException();
 		if(!Utilidades.comprobarIsbn(isbn)) throw new IsbnException();
 		
 		this.isbn = isbn;
@@ -53,18 +57,21 @@ public class Libro implements Serializable{
 		return titulo;
 	}
 	public void setTitulo(String titulo) throws CamposVaciosException {
+		if(titulo.length() == 0) throw new CamposVaciosException();
 		this.titulo = titulo;
 	}
 	public String getAutor() {
 		return autor;
 	}
 	public void setAutor(String autor) throws CamposVaciosException {
+		if(autor.length() == 0) throw new CamposVaciosException();
 		this.autor = autor;
 	}
 	public String getEditorial() {
 		return editorial;
 	}
 	public void setEditorial(String editorial) throws CamposVaciosException {
+		if(editorial.length() == 0) throw new CamposVaciosException();
 		this.editorial = editorial;
 	}
 	public LocalDate getFechaPrestamo() {
@@ -87,10 +94,12 @@ public class Libro implements Serializable{
 	}
 	
 	
+
 	@Override
 	public int hashCode() {
-		return Objects.hash(autor, editorial, fechaDevolucion, fechaPrestamo, isbn, prestado, titulo);
+		return Objects.hash(isbn);
 	}
+
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj)
@@ -100,11 +109,9 @@ public class Libro implements Serializable{
 		if (getClass() != obj.getClass())
 			return false;
 		Libro other = (Libro) obj;
-		return Objects.equals(autor, other.autor) && Objects.equals(editorial, other.editorial)
-				&& Objects.equals(fechaDevolucion, other.fechaDevolucion)
-				&& Objects.equals(fechaPrestamo, other.fechaPrestamo) && Objects.equals(isbn, other.isbn)
-				&& prestado == other.prestado && Objects.equals(titulo, other.titulo);
+		return Objects.equals(isbn, other.isbn);
 	}
+
 	@Override
 	public String toString() {
 		return "ISBN:" + isbn + "\nTitulo: " + titulo + "\nAutor: " + autor + "\nEditorial: " + editorial

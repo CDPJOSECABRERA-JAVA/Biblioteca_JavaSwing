@@ -6,10 +6,13 @@ import java.awt.EventQueue;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 import javax.swing.border.LineBorder;
 import javax.swing.border.TitledBorder;
 
+import excepciones.CamposVaciosException;
+import excepciones.IsbnException;
 import modelo.Libro;
 import servicios.LibrosServicios;
 
@@ -21,6 +24,11 @@ import javax.swing.JCheckBox;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import java.awt.event.ActionListener;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.awt.event.ActionEvent;
 
 public class FrmLibro {
@@ -36,6 +44,7 @@ public class FrmLibro {
 	private List<JButton> botonesNavegador;
 	
 	JCheckBox chckbxPrestado;
+	JLabel lblError;
 	JPanel pnlFormulario;
 	private JPanel pnlMantenimiento;
 	private JButton btnNuevo, btnEditar, btnBorrar, btnDeshacer, btnGuardar;
@@ -45,13 +54,14 @@ public class FrmLibro {
 	private JButton btnAdelante;
 	private JButton btnUltimo;
 	
+	private boolean nuevo = false;
 	private int puntero;
 	private List<Libro> libros;
 	
 	
 	public FrmLibro() {
 		definirVentana();
-		
+		 
 		camposDeTexto = new ArrayList<>();
 		camposDeTexto.add(fldEditorial); camposDeTexto.add(fldAutor); camposDeTexto.add(fldIdLibro);
 		camposDeTexto.add(fldTitulo); camposDeTexto.add(fldIsbn); camposDeTexto.add(fldFecha);
@@ -70,12 +80,12 @@ public class FrmLibro {
 			System.out.println(e.getMessage());
 		}
 		
+		
 		habilitarPanelLibros(false);
 		habilitarBotonesNavegador(true);
-		deshabilitarBotonesMantenimiento();
+		deshabilitarBotonesMantenimiento(); //habilitarBotonesMantenimiento();
 		mostrarLibro(puntero);
-		eventosNavegador();
-
+		eventos();
 	}
 
 	private void definirVentana() {
@@ -162,6 +172,10 @@ public class FrmLibro {
 		chckbxPrestado.setBounds(10, 203, 99, 23);
 		pnlFormulario.add(chckbxPrestado);
 		
+		lblError = new JLabel("");
+		lblError.setBounds(99, 221, 263, 14);
+		pnlFormulario.add(lblError);
+		
 		pnlMantenimiento = new JPanel();
 		pnlMantenimiento.setBounds(27, 11, 372, 84);
 		
@@ -228,6 +242,7 @@ public class FrmLibro {
 		for(JTextField campo : camposDeTexto) {
 			campo.setEditable(bol);
 		}
+		chckbxPrestado.setEnabled(bol);
 	}
 	
 	public void habilitarBotonesMantenimiento(){
@@ -255,6 +270,7 @@ public class FrmLibro {
 	}
 	
 	public void mostrarLibro(int i){
+		borrarCamposTexto();
 		
 		fldTitulo.setText(libros.get(i).getTitulo());
 		fldAutor.setText(libros.get(i).getAutor());
@@ -264,7 +280,7 @@ public class FrmLibro {
 		if(libros.get(i).getFechaPrestamo() != null)
 		fldFecha.setText(libros.get(i).getFechaPrestamo().toString());
 		
-		chckbxPrestado.setEnabled(libros.get(i).isPrestado());
+		chckbxPrestado.setSelected(libros.get(i).isPrestado());
 		
 		if(puntero == 0) {
 			btnAtras.setEnabled(false);
@@ -285,9 +301,10 @@ public class FrmLibro {
 	}
 
 	
-	//EVENTOS DE BOTONES DE NAVEGADOR
-	public void eventosNavegador(){
+	//EVENTOS
+	public void eventos(){
 		
+		//EVENTOS DE NAVEGADOR
 		btnPrimero.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				
@@ -323,10 +340,123 @@ public class FrmLibro {
 				mostrarLibro(--puntero);
 			}
 		});
+		//EVENTOS DE BOTONES MANTENIMIENTO
+		btnNuevo.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				borrarCamposTexto();
+				habilitarBotonesMantenimiento();
+				habilitarPanelLibros(true);
+				habilitarBotonesNavegador(false);
+				nuevo = true;
+				fldFecha.setEnabled(false);
+				chckbxPrestado.setEnabled(false);
+			}
+		});
+		btnEditar.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				habilitarBotonesMantenimiento();
+				habilitarBotonesNavegador(false);
+				chckbxPrestado.setEnabled(true);
+			}
+		});
 		
+		btnGuardar.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				
+				if(nuevo) {
+					LibrosServicios ls = new LibrosServicios();
+					try {						
+						boolean agregado = ls.agregarLibro
+								(fldIsbn.getText(),fldTitulo.getText(), fldAutor.getText(), fldEditorial.getText());
+						
+						libros = ls.obtenerTodos();
+						ls = null;
+						
+						if(agregado) JOptionPane.showMessageDialog(frame, "Libro agregado.");
+						else JOptionPane.showMessageDialog(frame, "Error. Libro no agregado. Es probable que este ISBN ya esté siendo utilizado.");
+						
+						deshabilitarBotonesMantenimiento();
+						habilitarPanelLibros(false);
+						habilitarBotonesNavegador(true);
+						borrarCamposTexto();
+						puntero = (agregado) ? libros.size()-1 : puntero;
+						mostrarLibro(puntero);
+						nuevo = false;
+						lblError.setText("");
+						
+						
+					} catch (FileNotFoundException e1) {
+						lblError.setText("Error. Fichero no encontrado.");
+					} catch (IOException e1) {
+						lblError.setText("Error relacionado con el fichero.");
+					} catch (IsbnException e1) {
+						lblError.setText("Error. ISBN invalido.");
+					} catch (CamposVaciosException e1) {
+						lblError.setText("Error. No pueden haber campos vacíos.");
+					}
+				}
+				else{
+					LibrosServicios ls = new LibrosServicios();
+					boolean encontrado = ls.prestarLibro(fldIsbn.getText(), fldFecha.getText(), chckbxPrestado.isSelected());
+					ls = null;
+					
+					if(encontrado) JOptionPane.showMessageDialog(frame, "El libro se ha editado");
+					else JOptionPane.showMessageDialog(frame, "Libro no encontrado");
+					
+					deshabilitarBotonesMantenimiento();
+					habilitarPanelLibros(false);
+					habilitarBotonesNavegador(true);
+					borrarCamposTexto();
+					
+					LibrosServicios libroService = new LibrosServicios();
+					libros = libroService.obtenerTodos();
+					libroService = null;
+					
+					mostrarLibro(puntero);
+				}
+			}
+		});
+		btnDeshacer.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				deshabilitarBotonesMantenimiento();
+				borrarCamposTexto();
+				habilitarPanelLibros(false);
+				habilitarBotonesNavegador(true);
+				mostrarLibro(0);
+				nuevo = false;
+				lblError.setText("");
+			}
+		});
+		
+		btnBorrar.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				
+				String msg = "¿Seguro que quieres eliminar \"" + fldTitulo.getText() + "\"?";
+				int confirmado = JOptionPane.showConfirmDialog(frame,
+																msg,
+																"Eliminar libro",
+																JOptionPane.YES_NO_OPTION,
+																JOptionPane.QUESTION_MESSAGE);
+				
+				if(confirmado == JOptionPane.NO_OPTION) return;
+				
+				LibrosServicios libroService = new LibrosServicios();
+				
+				boolean borrado = libroService.borrarLibro(fldIsbn.getText());
+				libroService = null;
+				
+				if(borrado) JOptionPane.showMessageDialog(frame, "Libro eliminado.");
+				else JOptionPane.showMessageDialog(frame, "Error. El libro no se ha podido eliminar.");
+				
+				libroService = new LibrosServicios();
+				libros = libroService.obtenerTodos();
+				puntero = 0;
+				mostrarLibro(puntero);
+				
+			}
+			
+		});
 	}
-	
-	//EVENTOS DE BOTONES
-	
-	
 }
